@@ -1,0 +1,1 @@
+//Node js file to test the NFT.sol contract
