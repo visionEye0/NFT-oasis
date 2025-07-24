@@ -8,6 +8,8 @@ export const config = { api: { bodyParser: false } };
 
 const PINATA_JWT = process.env.PINATA_JWT;
 
+console.log("pinata jwt === ", PINATA_JWT)
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Only POST allowed" });
