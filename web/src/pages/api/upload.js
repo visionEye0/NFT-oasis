@@ -8,8 +8,6 @@ export const config = { api: { bodyParser: false } };
 
 const PINATA_JWT = process.env.PINATA_JWT;
 
-console.log("pinata jwt === ", PINATA_JWT)
-
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     res.status(405).json({ error: "Only POST allowed" });
@@ -43,15 +41,23 @@ export default async function handler(req, res) {
       const imgCID = imgRes.data.IpfsHash;
       const imgURI = `ipfs://${imgCID}`;
 
+      const imgFilename = img.originalFilename || 'file'
       const metadata = {
         name: fields.name?.[0] || "",
         description: fields.description?.[0] || "",
         image: imgURI,
       };
 
+      const jsonPayload = {
+        pinataMetadata: {
+          name: `metadata-${imgFilename}`
+        },
+        pinataContent: metadata
+      };
+
       const jsonRes = await axios.post(
         "https://api.pinata.cloud/pinning/pinJSONToIPFS",
-        metadata,
+        jsonPayload,
         {
           headers: {
             Authorization: `Bearer ${PINATA_JWT}`,
