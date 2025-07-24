@@ -6,6 +6,7 @@ import MarketplaceAbi from "./contractABIs/Marketplace.json";
 
 const NFT_ADDRESS = process.env.REACT_APP_NFT_ADDRESS;
 const MARKETPLACE_ADDRESS = process.env.REACT_APP_MARKETPLACE_ADDRESS;
+const PINATA_IPFS_GATEWAY = "brown-quick-cockroach-528.mypinata.cloud"
 
 function App() {
   const [account, setAccount] = useState("");
@@ -41,7 +42,13 @@ function App() {
   const list = async () => {
     const tokenId = prompt("Token ID to list:");
     const ethPrice = ethers.parseEther(price);
-    await nft.approve(MARKETPLACE_ADDRESS, tokenId);
+    try {
+      await nft.approve(MARKETPLACE_ADDRESS, tokenId);
+      
+    } catch (error) {
+      console.warn("error ==== ", error)
+      alert("listing failed, reason = ", (error.reason || error.message))
+    }
     const tx = await marketplace.listNFT(NFT_ADDRESS, tokenId, ethPrice);
     await tx.wait();
     alert("NFT listed!");
@@ -56,11 +63,28 @@ function App() {
   const loadListings = async () => {
     const items = [];
     const count = await marketplace.itemCount();
+    console.log("load listing count ==== ", count)
     for (let i = 1n; i <= count; i++) {
       const item = await marketplace.listings(i);
-      items.push({ id: i, ...item });
+      const [seller, nftAddress, tokenId, price] = item
+      const tokenURI = await nft.tokenURI(tokenId)
+      const res = await fetch(tokenURI.replace("ipfs://", `${PINATA_IPFS_GATEWAY}/ipfs/`))
+      const nft_metadata = await res.json()
+
+      console.log("token metadata === ", nft_metadata)
+
+      console.log("token uri ==== ", tokenURI)
+      console.log("marketplace each item === ", item)
+      items.push({ 
+        id: i, 
+        seller,
+        nftAddress,
+        tokenId,
+        price
+      });
     }
     setListings(items);
+    console.log("load listing items ==== ", items)
   };
 
   return (

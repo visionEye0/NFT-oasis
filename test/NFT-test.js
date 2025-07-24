@@ -1,1 +1,1 @@
-//Node js file to test the NFT.sol contract
+//write the code to test NFT.sol smart contract
