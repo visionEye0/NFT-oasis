@@ -9,23 +9,23 @@ const NFT_ADDRESS          = process.env.NEXT_PUBLIC_NFT_ADDRESS;
 const MARKETPLACE_ADDRESS = process.env.NEXT_PUBLIC_MARKETPLACE_ADDRESS;
 
 export default function Home() {
-  const [account, setAccount]         = useState("");
-  const [nft, setNFT]                 = useState(null);
+  const [account, setAccount] = useState("");
+  const [nft, setNFT] = useState(null);
   const [marketplace, setMarketplace] = useState(null);
 
   // form state
-  const [name, setName]               = useState("");
+  const [name, setName] = useState("");
   const [description, setDescription] = useState("");
-  const [file, setFile]               = useState(null);
-  const [price, setPrice]             = useState("");
+  const [file, setFile] = useState(null);
+  const [price, setPrice] = useState("");
 
   // listings and loading state
-  const [listings, setListings]       = useState([]);
-  const [isConnecting, setIsConnecting]     = useState(false);
-  const [isMinting, setIsMinting]           = useState(false);
-  const [isListing, setIsListing]           = useState(false);
+  const [listings, setListings] = useState([]);
+  const [isConnecting, setIsConnecting] = useState(false);
+  const [isMinting, setIsMinting] = useState(false);
+  const [isListing, setIsListing] = useState(false);
   const [isLoadingListings, setIsLoadingListings] = useState(false);
-  const [buyingId, setBuyingId]             = useState(null);
+  const [buyingId, setBuyingId] = useState(null);
 
   // Connect wallet
   const connectWallet = async () => {
