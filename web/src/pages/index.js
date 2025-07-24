@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import NFTAbi from "@/contractABIs/NFT.json";
 import MarketplaceAbi from "@/contractABIs/Marketplace.json";
+import Image from 'next/image';
+
 
 const NFT_ADDRESS          = process.env.NEXT_PUBLIC_NFT_ADDRESS;
 const MARKETPLACE_ADDRESS = process.env.NEXT_PUBLIC_MARKETPLACE_ADDRESS;
@@ -205,10 +207,20 @@ export default function Home() {
         <div className="listings">
           {listings.map(item => (
             <div key={item.id.toString()} className="card">
-              <img
-                src={item.metadata.image.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/")}
-                alt={item.metadata.name}
-              />
+              <div className="image-wrapper">
+                <Image
+                  src={item.metadata.image.replace(
+                    "ipfs://",
+                    "https://gateway.pinata.cloud/ipfs/"
+                  )}
+                  alt={item.metadata.name}
+                  fill
+                  style={{
+                    objectFit: "contain",
+                    borderRadius: "8px",
+                  }}
+                />
+              </div>
               <h3>{item.metadata.name}</h3>
               <p>{item.metadata.description}</p>
               <p className="price">
