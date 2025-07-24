@@ -6,13 +6,15 @@ import MarketplaceAbi from "./contractABIs/Marketplace.json";
 
 const NFT_ADDRESS = process.env.REACT_APP_NFT_ADDRESS;
 const MARKETPLACE_ADDRESS = process.env.REACT_APP_MARKETPLACE_ADDRESS;
-const PINATA_IPFS_GATEWAY = "brown-quick-cockroach-528.mypinata.cloud"
 
 function App() {
   const [account, setAccount] = useState("");
   const [nft, setNFT] = useState();
   const [marketplace, setMarketplace] = useState();
-  const [tokenURI, setTokenURI] = useState("");
+
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [file, setFile] = useState(null);
   const [price, setPrice] = useState("");
   const [listings, setListings] = useState([]);
 
@@ -22,94 +24,134 @@ function App() {
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         setAccount(await signer.getAddress());
-
-        const nft = new ethers.Contract(NFT_ADDRESS, NFTAbi.abi, signer);
-        const market = new ethers.Contract(MARKETPLACE_ADDRESS, MarketplaceAbi.abi, signer);
-        setNFT(nft);
-        setMarketplace(market);
+        setNFT(new ethers.Contract(NFT_ADDRESS, NFTAbi.abi, signer));
+        setMarketplace(new ethers.Contract(MARKETPLACE_ADDRESS, MarketplaceAbi.abi, signer));
       }
     };
     init();
   }, []);
 
-  const mint = async () => {
-    const tx = await nft.mint(tokenURI);
+  async function uploadAndMint() {
+    if (!name || !description || !file) {
+      return alert("Please complete all fields before uploading.");
+    }
+
+    const formData = new FormData();
+    formData.append("file", file);
+    formData.append("name", name);
+    formData.append("description", description);
+
+    const res = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+
+    if (!res.ok) {
+      return alert("Upload failed, check console");
+    }
+
+    const { uri } = await res.json();
+    console.log("Received Token URI:", uri);
+
+    const tx = await nft.mint(uri);
     const receipt = await tx.wait();
-    const tokenId = receipt.logs[0].args[2]; // tokenId emitted
-    alert("Minted tokenId: " + tokenId);
-  };
+    const tokenId = receipt.logs[0].args[2];
+    alert(`✅ Minted successfully! Token ID: ${tokenId}`);
+  }
 
   const list = async () => {
-    const tokenId = prompt("Token ID to list:");
+    const tokenId = prompt("Enter Token ID to list:");
     const ethPrice = ethers.parseEther(price);
     try {
       await nft.approve(MARKETPLACE_ADDRESS, tokenId);
-      
-    } catch (error) {
-      console.warn("error ==== ", error)
-      alert("listing failed, reason = ", (error.reason || error.message))
+      await (await marketplace.listNFT(NFT_ADDRESS, tokenId, ethPrice)).wait();
+      alert("✅ Listed for sale!");
+    } catch (err) {
+      console.error(err);
+      alert("Listing failed: " + (err.reason || err.message));
     }
-    const tx = await marketplace.listNFT(NFT_ADDRESS, tokenId, ethPrice);
-    await tx.wait();
-    alert("NFT listed!");
   };
 
   const buy = async (id, cost) => {
-    const tx = await marketplace.buyNFT(id, { value: cost });
-    await tx.wait();
-    alert("NFT bought!");
+    await (await marketplace.buyNFT(id, { value: cost })).wait();
+    alert("✅ Purchase completed!");
   };
 
   const loadListings = async () => {
     const items = [];
     const count = await marketplace.itemCount();
-    console.log("load listing count ==== ", count)
     for (let i = 1n; i <= count; i++) {
-      const item = await marketplace.listings(i);
-      const [seller, nftAddress, tokenId, price] = item
-      const tokenURI = await nft.tokenURI(tokenId)
-      const res = await fetch(tokenURI.replace("ipfs://", `${PINATA_IPFS_GATEWAY}/ipfs/`))
-      const nft_metadata = await res.json()
-
-      console.log("token metadata === ", nft_metadata)
-
-      console.log("token uri ==== ", tokenURI)
-      console.log("marketplace each item === ", item)
-      items.push({ 
-        id: i, 
-        seller,
-        nftAddress,
-        tokenId,
-        price
-      });
+      const [seller, nftAddr, tokenId, priceFt] = await marketplace.listings(i);
+      const uri = await nft.tokenURI(tokenId);
+      const metaRes = await fetch(uri.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/"));
+      const meta = await metaRes.json();
+      items.push({ id: i, seller, tokenId, price: priceFt, metadata: meta });
     }
     setListings(items);
-    console.log("load listing items ==== ", items)
   };
 
   return (
-    <div style={{ textAlign: "center", padding: "2rem" }}>
+    <div style={{ maxWidth: 800, margin: "auto", padding: 20 }}>
       <h1>🖼️ Oasis NFT Marketplace</h1>
-      <p>Connected: {account}</p>
+      <p>Connected wallet: <b>{account}</b></p>
 
-      <input value={tokenURI} onChange={(e) => setTokenURI(e.target.value)} placeholder="Token URI (ipfs://...)" />
-      <button onClick={mint}>Mint NFT</button>
+      <section>
+        <h2>🔹 Mint New NFT</h2>
+        <input
+          type="text"
+          placeholder="NFT Name"
+          value={name}
+          onChange={e => setName(e.target.value)}
+        />
+        <br />
+        <input
+          type="text"
+          placeholder="NFT Description"
+          value={description}
+          onChange={e => setDescription(e.target.value)}
+        />
+        <br />
+        <input
+          type="file"
+          accept="image/*"
+          onChange={e => setFile(e.target.files[0])}
+        />
+        <br />
+        <button onClick={uploadAndMint}>Upload + Mint NFT</button>
+      </section>
 
-      <br /><br />
+      <hr />
 
-      <input value={price} onChange={(e) => setPrice(e.target.value)} placeholder="Price in ETH" />
-      <button onClick={list}>List NFT</button>
+      <section>
+        <h2>🔹 List NFT for Sale</h2>
+        <input
+          type="text"
+          placeholder="Price in ETH"
+          value={price}
+          onChange={e => setPrice(e.target.value)}
+        />
+        <button onClick={list}>List NFT</button>
+      </section>
 
-      <br /><br />
-      <button onClick={loadListings}>Load Listings</button>
-      {listings.map((item) => (
-        <div key={item.id} style={{ border: "1px solid #ccc", margin: "1rem", padding: "1rem" }}>
-          <p><b>ID:</b> {item.id.toString()}</p>
-          <p><b>Token:</b> {item.tokenId.toString()}</p>
-          <p><b>Price:</b> {ethers.formatEther(item.price)} ETH</p>
-          <button onClick={() => buy(item.id, item.price)}>Buy</button>
-        </div>
-      ))}
+      <hr />
+
+      <section>
+        <h2>🔹 Marketplace Listings</h2>
+        <button onClick={loadListings}>Load Listings</button>
+        {listings.map(item => (
+          <div key={item.id} style={{ border: "1px solid #ccc", padding: 15, margin: "1rem 0" }}>
+            <img
+              src={item.metadata.image.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/")}
+              alt={item.metadata.name}
+              style={{ maxWidth: 200, borderRadius: 8 }}
+            />
+            <h3>{item.metadata.name}</h3>
+            <p>{item.metadata.description}</p>
+            <p>Token ID: {item.tokenId.toString()} • Price: {ethers.formatEther(item.price)} ETH</p>
+            <button onClick={() => buy(item.id, item.price)}>Buy NFT</button>
+          </div>
+        ))}
+      </section>
     </div>
   );
 }
