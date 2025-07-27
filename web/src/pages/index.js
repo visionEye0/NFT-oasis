@@ -158,7 +158,17 @@ export default function Home() {
 
   return (
     <div className="container">
-      <h1>💠 Oasis NFT Marketplace</h1>
+      
+      <div className="logo-wrapper">
+        <Image
+          src="/cool-monkey.png"
+          width={150}
+          height={150}
+          alt="Oasis NFT Marketplace"
+        />
+        <h1>Oasis NFT Marketplace</h1>
+      </div>
+
 
       <div className="connected-info">
         {account ? (
